@@ -1,1 +1,345 @@
-<h2>Hello World 2</h2>
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pipeline Dashboard — Logs & Metrics (Dark)</title>
+
+  <!-- Tailwind Play CDN (small projects ok) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* sticky header specifics and small overrides */
+    .sticky-header th { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(4px); }
+    .log-message { max-width: 60ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* dark-only background */
+    body { background: #0b1220; color: #e6eef8; }
+    .table-card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border: 1px solid rgba(255,255,255,0.04); }
+    .badge-level { font-weight: 600; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; }
+    .scroll-area { max-height: 56vh; overflow:auto; }
+  </style>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body class="antialiased">
+
+  <header class="flex items-center gap-4 px-6 py-4 border-b border-white/6">
+    <div>
+      <h1 class="text-2xl font-semibold">Movie Pipeline — Logs & Metrics</h1>
+      <p class="text-sm text-slate-300/70">Dark Dashboard • Live Mode • Server-side search</p>
+    </div>
+    <div class="ml-auto flex items-center gap-3">
+      <div class="text-sm text-slate-300/60">Live:</div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input id="liveToggle" type="checkbox" class="sr-only peer" checked>
+        <div class="w-12 h-6 bg-slate-700 peer-checked:bg-green-600 rounded-full peer"></div>
+        <div class="absolute left-1 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-6"></div>
+      </label>
+      <div class="text-sm text-slate-300/60">Auto-scroll:</div>
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input id="scrollToggle" type="checkbox" class="sr-only peer" checked>
+        <div class="w-12 h-6 bg-slate-700 peer-checked:bg-blue-600 rounded-full peer"></div>
+        <div class="absolute left-1 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-6"></div>
+      </label>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-6 space-y-6">
+    <!-- Controls -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="col-span-2 flex gap-3">
+        <input id="endpoint" class="flex-1 px-3 py-2 rounded-md bg-slate-900 border border-white/5 text-sm" placeholder="Edge function URL" />
+        <select id="tableSelect" class="px-3 py-2 rounded-md bg-slate-900 border border-white/5 text-sm">
+          <option value="logs">logs</option>
+          <option value="log_errors">log_errors</option>
+          <option value="pipeline_metrics">pipeline_metrics</option>
+        </select>
+        <input id="limit" type="number" value="200" min="1" max="1000" class="w-24 px-3 py-2 rounded-md bg-slate-900 border border-white/5 text-sm" />
+        <button id="refreshBtn" class="px-3 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm">Refresh</button>
+      </div>
+
+      <div class="flex gap-3">
+        <input id="search" class="flex-1 px-3 py-2 rounded-md bg-slate-900 border border-white/5 text-sm" placeholder="Server-side search (message/full_trace)..." />
+        <select id="levelFilter" class="px-3 py-2 rounded-md bg-slate-900 border border-white/5 text-sm">
+          <option value="">All levels</option>
+          <option>DEBUG</option>
+          <option>INFO</option>
+          <option>WARNING</option>
+          <option>ERROR</option>
+        </select>
+        <input id="sourceFilter" class="w-40 px-3 py-2 rounded-md bg-slate-900 border border-white/5 text-sm" placeholder="source (pipeline/tmdb/...)" />
+      </div>
+    </section>
+
+    <!-- Metrics chart -->
+    <section class="table-card p-4 rounded-lg shadow-sm">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-medium">Pipeline Metrics</h2>
+        <div class="text-sm text-slate-300/70">Shows last fetched metrics</div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="col-span-2">
+          <canvas id="metricsChart" class="w-full h-48 bg-transparent"></canvas>
+        </div>
+        <div class="space-y-2">
+          <div class="text-sm text-slate-300/70">Summary</div>
+          <div id="metricsSummary" class="text-sm"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Logs / Table -->
+    <section class="table-card p-4 rounded-lg shadow-sm">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-medium">Table Viewer</h2>
+        <div class="text-sm text-slate-300/70">Table: <span id="currentTable">logs</span></div>
+      </div>
+
+      <div class="scroll-area rounded-md border border-white/4">
+        <table class="min-w-full divide-y divide-white/6">
+          <thead class="sticky-header">
+            <tr>
+              <th class="px-4 py-2 text-left text-xs uppercase tracking-wider">ID</th>
+              <th class="px-4 py-2 text-left text-xs uppercase tracking-wider">Source</th>
+              <th class="px-4 py-2 text-left text-xs uppercase tracking-wider">Level</th>
+              <th class="px-4 py-2 text-left text-xs uppercase tracking-wider">Message</th>
+              <th class="px-4 py-2 text-left text-xs uppercase tracking-wider">Created</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="text-sm"></tbody>
+        </table>
+      </div>
+
+      <div class="mt-3 flex items-center gap-3 justify-between">
+        <div class="flex gap-2">
+          <button id="prevBtn" class="px-3 py-2 rounded-md bg-slate-800 hover:bg-slate-700">Prev</button>
+          <button id="nextBtn" class="px-3 py-2 rounded-md bg-slate-800 hover:bg-slate-700">Next</button>
+        </div>
+        <div class="text-sm text-slate-300/60">Page: <span id="page">1</span></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="text-center text-sm text-slate-400 py-4">
+    <div id="status">Ready</div>
+  </footer>
+
+<script>
+/* Dashboard JS (dark) — single file. Edit ENDPOINT_DEFAULT below.
+   Features: server-side search, live mode, auto-scroll, charts, colored rows, sticky head.
+*/
+
+const ENDPOINT_DEFAULT = "https://bccnyyrkvejbacvywqgk.supabase.co/functions/v1/getLogs";
+document.getElementById("endpoint").value = ENDPOINT_DEFAULT;
+const tableSelect = document.getElementById("tableSelect");
+const limitInput = document.getElementById("limit");
+const searchInput = document.getElementById("search");
+const levelFilter = document.getElementById("levelFilter");
+const sourceFilter = document.getElementById("sourceFilter");
+const currentTableLabel = document.getElementById("currentTable");
+const statusEl = document.getElementById("status");
+const liveToggle = document.getElementById("liveToggle");
+const scrollToggle = document.getElementById("scrollToggle");
+
+let offset = 0;
+let page = 1;
+const rowsPerPage = () => Math.min(1000, Number(limitInput.value) || 200);
+let autoTimer = null;
+let metricsChart = null;
+let lastMetrics = [];
+
+function setStatus(s){ statusEl.innerText = s; }
+
+function buildUrl(){
+  const base = (document.getElementById("endpoint").value || ENDPOINT_DEFAULT).trim();
+  const table = tableSelect.value;
+  const params = new URLSearchParams();
+  params.set("table", table);
+  params.set("limit", rowsPerPage());
+  params.set("offset", offset);
+  if(levelFilter.value) params.set("level", levelFilter.value);
+  if(sourceFilter.value) params.set("source", sourceFilter.value.trim());
+  if(searchInput.value.trim()) params.set("search", searchInput.value.trim());
+  return base + "?" + params.toString();
+}
+
+async function fetchData(){
+  setStatus("Fetching...");
+  const url = buildUrl();
+  try {
+    const res = await fetch(url);
+    if(!res.ok){
+      setStatus("Error: " + res.status + " " + await res.text());
+      return null;
+    }
+    const data = await res.json();
+    setStatus(`Loaded ${Array.isArray(data) ? data.length : 0} rows`);
+    return data;
+  } catch (err) {
+    setStatus("Fetch failed: " + err);
+    return null;
+  }
+}
+
+function badgeForLevel(level){
+  if(!level) return '<span class="badge-level bg-slate-700 text-slate-200">N/A</span>';
+  switch(level.toUpperCase()){
+    case 'DEBUG': return '<span class="badge-level bg-green-900 text-green-300">DEBUG</span>';
+    case 'INFO': return '<span class="badge-level bg-blue-900 text-blue-200">INFO</span>';
+    case 'WARNING': return '<span class="badge-level bg-yellow-800 text-yellow-200">WARN</span>';
+    case 'ERROR': return '<span class="badge-level bg-red-900 text-red-200">ERROR</span>';
+    default: return `<span class="badge-level bg-slate-700 text-slate-200">${level}</span>`;
+  }
+}
+
+function renderTable(data){
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = '';
+  if(!Array.isArray(data) || data.length === 0){
+    tbody.innerHTML = '<tr><td class="px-4 py-3 text-slate-400" colspan="5">No rows</td></tr>';
+    return;
+  }
+
+  currentTableLabel.innerText = tableSelect.value;
+
+  // show up to rowsPerPage entries
+  for(const row of data){
+    const tr = document.createElement("tr");
+    tr.className = 'border-b border-white/4';
+    const id = row.id ?? '';
+    const source = row.source ?? '';
+    const level = row.level ?? '';
+    const message = row.message ?? row.short_message ?? '';
+    const created = row.created_at ?? row.created ?? '';
+
+    tr.innerHTML = `
+      <td class="px-4 py-3 align-top text-sm text-slate-200">${id}</td>
+      <td class="px-4 py-3 align-top text-sm text-slate-200">${escapeHtml(source)}</td>
+      <td class="px-4 py-3 align-top">${badgeForLevel(level)}</td>
+      <td class="px-4 py-3 align-top text-slate-200"><div class="log-message" title="${escapeHtml(String(message||''))}">${escapeHtml(String(message||''))}</div></td>
+      <td class="px-4 py-3 align-top text-sm text-slate-400">${escapeHtml(String(created))}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  // auto-scroll to bottom if live & enabled
+  const scrollArea = document.querySelector('.scroll-area');
+  if(liveToggle.checked && scrollToggle.checked && scrollArea){
+    scrollArea.scrollTop = scrollArea.scrollHeight;
+  }
+}
+
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// metrics chart
+function renderMetrics(data){
+  if(!Array.isArray(data) || data.length === 0) {
+    // clear chart
+    if(metricsChart){
+      metricsChart.data.labels = [];
+      metricsChart.data.datasets.forEach(ds => ds.data = []);
+      metricsChart.update();
+    }
+    return;
+  }
+
+  // data is descending (id desc). reverse to show time forward
+  const rows = data.slice().reverse();
+  const labels = rows.map(r => r.batch_no ?? r.id ?? '');
+  const updated = rows.map(r => Number(r.rows_updated || 0));
+  const processed = rows.map(r => Number(r.rows_processed || 0));
+  const duration = rows.map(r => Number(r.duration_seconds || 0));
+
+  const ctx = document.getElementById('metricsChart').getContext('2d');
+
+  if(!metricsChart){
+    metricsChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'rows_updated', data: updated, borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.08)', tension:0.2 },
+          { label: 'rows_processed', data: processed, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.08)', tension:0.2 },
+          { label: 'duration_seconds', data: duration, borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.06)', tension:0.2, yAxisID: 'y2' }
+        ]
+      },
+      options: {
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: { beginAtZero: true },
+          y2: {
+            position: 'right',
+            grid: { display: false },
+            beginAtZero: true,
+            ticks: { color: '#f97316' }
+          }
+        },
+        plugins: { legend: { labels: { color: '#cbd5e1' } } }
+      }
+    });
+  } else {
+    metricsChart.data.labels = labels;
+    metricsChart.data.datasets[0].data = updated;
+    metricsChart.data.datasets[1].data = processed;
+    metricsChart.data.datasets[2].data = duration;
+    metricsChart.update();
+  }
+
+  // small summary
+  const totalUpdated = updated.reduce((a,b)=>a+b,0);
+  const totalProcessed = processed.reduce((a,b)=>a+b,0);
+  document.getElementById('metricsSummary').innerText = `Batches: ${labels.length} • Total processed: ${totalProcessed} • Total updated: ${totalUpdated}`;
+}
+
+
+// main refresh + live handling
+async function refreshOnce(){
+  const data = await fetchData();
+  if(!data) return;
+  const table = tableSelect.value;
+  if(table === 'pipeline_metrics'){
+    renderMetrics(data);
+  }
+  renderTable(data);
+  lastMetrics = data;
+}
+
+async function loopRefresh(){
+  // immediate first refresh
+  await refreshOnce();
+  if(autoTimer) clearInterval(autoTimer);
+
+  const interval = Math.max(3, Number(document.getElementById('limit').value) || 30); // reuse limit field if needed or later separate control
+  const ms = (liveToggle.checked ? 5 : 30) * 1000; // if live, 5s else 30s - default
+  autoTimer = setInterval(async () => {
+    if(!liveToggle.checked) return;
+    await refreshOnce();
+  }, ms);
+}
+
+// event wiring
+document.getElementById('refreshBtn').addEventListener('click', ()=>{ offset=0; page=1; document.getElementById('page').innerText=1; refreshOnce(); });
+document.getElementById('nextBtn').addEventListener('click', ()=>{ offset += rowsPerPage(); page+=1; document.getElementById('page').innerText=page; refreshOnce(); });
+document.getElementById('prevBtn').addEventListener('click', ()=>{ if(offset >= rowsPerPage()){ offset -= rowsPerPage(); page = Math.max(1, page-1); document.getElementById('page').innerText=page; refreshOnce(); } });
+
+// search and filters
+let searchTimer = null;
+searchInput.addEventListener('input', ()=>{ clearTimeout(searchTimer); searchTimer = setTimeout(()=>{ offset=0; page=1; refreshOnce(); }, 400); });
+levelFilter.addEventListener('change', ()=>{ offset=0; page=1; refreshOnce(); });
+sourceFilter.addEventListener('input', ()=>{ clearTimeout(searchTimer); searchTimer = setTimeout(()=>{ offset=0; page=1; refreshOnce(); }, 400); });
+tableSelect.addEventListener('change', ()=>{ offset=0; page=1; document.getElementById('page').innerText=1; refreshOnce(); });
+
+// helper
+function rowsPerPage(){ return Math.min(1000, Number(limitInput.value) || 200); }
+
+// initial run
+(async ()=>{
+  // set default endpoint if left
+  if(!document.getElementById('endpoint').value) document.getElementById('endpoint').value = ENDPOINT_DEFAULT;
+  await refreshOnce();
+  loopRefresh();
+})();
+
+</script>
+</body>
+</html>
