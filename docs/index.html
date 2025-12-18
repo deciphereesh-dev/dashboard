@@ -8,130 +8,136 @@
 		<!-- Tailwind Play CDN (small projects ok) -->
 		<script src="https://cdn.tailwindcss.com"></script>
 		<style>
-			/* sticky header specifics and small overrides */
-			.sticky-header th {
-				position: sticky;
-				top: 0;
-				z-index: 10;
-				backdrop-filter: blur(4px);
-			}
-			.log-message {
-				max-width: 60ch;
-				/* white-space: nowrap; */
-				overflow: hidden;
-				text-overflow: ellipsis;
-			}
-			/* dark-only background */
-			body {
-				background: #0b1220;
-				color: #e6eef8;
-			}
-			.table-card {
-				background: linear-gradient(
-					180deg,
-					rgba(255, 255, 255, 0.02),
-					rgba(255, 255, 255, 0.01)
-				);
-				border: 1px solid rgba(255, 255, 255, 0.04);
-			}
-			.badge-level {
-				font-weight: 600;
-				padding: 0.25rem 0.5rem;
-				border-radius: 9999px;
-				font-size: 0.75rem;
-			}
-			.scroll-area {
-				max-height: 56vh;
-				overflow: auto;
-			}
-			*{
+			  /* General reset */
+			  * {
 			    margin: 0;
 			    padding: 0;
-			    /* box-sizing: border-box; */
-			    font-family: Verdana, Geneva, Tahoma, sans-serif;
-			}
-			body{
-			    width: 100vw;
-			    height: 100vh;
-			    /* overflow: hidden; */
-			    /* display: flex;
-			    justify-content: center; */
-			}
-			.gameArea{
-			    width: 400px;
-			    height: 100%;
-			    display: flex;
-			    flex-direction: column;
-			    background-color: aqua;
-			    justify-content: center;
-			    align-items: center;
-			}
-			.vertical{
-			    display: flex;
-			    flex-direction: row;
-			    width: 100%;
-			    justify-content: space-around;
-			    text-align: center;
-			    margin-top: 20px;
-			}
-			.tag{
-			    font-size: 14px;
-				white-space: nowrap;
-				overflow: hidden;
-			    color: rgb(60, 60, 60);
-			}
-			.numbtn{
-			    width: 80%;
-			}
-			.num{
-			    width: 35px;
-			    height: 35px;
-			    border: none;
-			    font-size: 25px;
-			    background-color: transparent;
-			    color: rgb(26, 26, 85);
-			    cursor: pointer;
-			}
-			table{
-			    display: flex;
-			    flex-wrap: wrap;
-			    margin-top: 15px;
-			    width: 100%;
-			    gap: 0;
-			    justify-content: center;
-			}
-			tbody{
-			    gap: 0;
-			    border: 1px solid black;
-			}
-			.selected{
-			    border: 2px solid rgb(21, 21, 81);
-			}
-			td{
-			    width: 35px;
-			    height: 35px;
-			    border: 1px solid black;
-			    text-align: center;
-			    font-size: 24px;
-			    color: black;
-			}
-			.notice{
-			    font-size: 13px;
-			    text-transform: capitalize;
-			    color: rgb(40, 40, 40);
-			}
-			.toolbtn{
-			    cursor: pointer;
-			    padding: 4px;
-			}
+			    box-sizing: border-box;
+			    font-family: Verdana, Geneva, Tahoma, sans-serif; /* Use consistent and legible font */
+			  }
 			
-			.toolbtn:hover{
-			    color: rgb(25, 25, 25);
-			    /* transform: scale(1.01); */
+			  /* Body styles */
+			  body {
+			    width: 100%;
+			    height: 100%;
+			    background: #0b1220; /* Dark theme background */
+			    color: #e6eef8; /* Subdued text color for dark background */
+			  }
+			
+			  /* Reusable components and utility classes */
+			  .sticky-header th {
+			    position: sticky;
+			    top: 0;
+			    z-index: 10;
+			    backdrop-filter: blur(4px); /* Smooth header blur */
+			  }
+			
+			  .log-message {
+			    max-width: 60ch;
+			    overflow: hidden;
+			    text-overflow: ellipsis;
+			  }
+			
+			  .table-card {
+			    background: linear-gradient(
+			      180deg,
+			      rgba(255, 255, 255, 0.02),
+			      rgba(255, 255, 255, 0.01)
+			    );
+			    border: 1px solid rgba(255, 255, 255, 0.04);
+			    border-radius: 8px;
+			    padding: 1rem;
+			  }
+			
+			  /* Scroll area */
+			  .scroll-area {
+			    max-height: 56vh;
+			    overflow: auto;
+			  }
+			
+			  /* Buttons */
+			  button {
+			    border: none;
+			    cursor: pointer;
+			    transition: all 0.2s ease-in-out;
+			  }
+			
+			  button:hover {
+			    transform: scale(1.05);
+			  }
+			
+			  /* Badge styles for log levels */
+			  .badge-level {
 			    font-weight: 600;
-			}
-
-		</style>
+			    padding: 0.25rem 0.5rem;
+			    border-radius: 9999px;
+			    font-size: 0.75rem;
+			    display: inline-block;
+			  }
+			
+			  .badge-level.NA {
+			    background-color: #1e293b;
+			    color: #cbd5e1;
+			  }
+			
+			  .badge-level.DEBUG {
+			    background-color: #065f46;
+			    color: #bbf7d0;
+			  }
+			
+			  .badge-level.INFO {
+			    background-color: #1e40af;
+			    color: #bfdbfe;
+			  }
+			
+			  .badge-level.WARN {
+			    background-color: #b45309;
+			    color: #fde68a;
+			  }
+			
+			  .badge-level.ERROR {
+			    background-color: #991b1b;
+			    color: #fecaca;
+			  }
+			
+			  /* Table styles */
+			  table {
+			    width: 100%;
+			    border-collapse: collapse;
+			  }
+			
+			  thead th {
+			    text-transform: uppercase;
+			    font-size: 0.75rem;
+			    color: #94a3b8;
+			    background: #1e293b;
+			  }
+			
+			  tbody td {
+			    font-size: 0.875rem;
+			    color: white;
+			    text-align: left;
+			    padding: 0.5rem;
+			    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+			  }
+			
+			  tbody tr:nth-child(odd) {
+			    background-color: rgba(255, 255, 255, 0.02);
+			  }
+			
+			  tbody tr:hover {
+			    background-color: rgba(255, 255, 255, 0.1);
+			  }
+			
+			  /* Footer */
+			  footer {
+			    text-align: center;
+			    color: #94a3b8;
+			    padding: 0.5rem;
+			    border-top: 1px solid rgba(255, 255, 255, 0.05);
+			    font-size: 0.875rem;
+			  }
+			</style>
 
 		<!-- Chart.js -->
 		<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
