@@ -4,24 +4,15 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width,initial-scale=1" />
 		<title>Pipeline Dashboard — Logs & Metrics (Dark)</title>
-
-		<!-- Tailwind Play CDN (small projects ok) -->
 		<script src="https://cdn.tailwindcss.com"></script>
 		<style>
-			/* sticky header specifics and small overrides */
 			.sticky-header th {
 				position: sticky;
 				top: 0;
 				z-index: 10;
-				backdrop-filter: blur(4px);
+				backdrop-filter: blur(5px);
 			}
-			/* .log-message {
-				max-width: 60ch;
-				/* white-space: nowrap; */
-				/* overflow: hidden; */
-				/* text-overflow: ellipsis;
-			} */ 
-			/* dark-only background */
+
 			body {
 				background: #0b1220;
 				color: #e6eef8;
@@ -50,45 +41,59 @@
 		<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 	</head>
 	<body class="antialiased">
-		<header class="flex items-center gap-4 px-6 py-4 border-b border-white/6">
+		<header
+			class="flex flex-row justify-between items-center gap-4 px-6 py-4 border-b border-white/6"
+		>
 			<div>
 				<h1 class="text-2xl font-semibold">Movie Pipeline — Logs & Metrics</h1>
 				<p class="text-sm text-slate-300/70">
 					Monitor pipeline logs and performance metrics in real-time
 				</p>
 			</div>
-			<div class="ml-auto flex items-center gap-3">
-				<div class="text-sm text-slate-300/60">Live:</div>
-				<label class="relative inline-flex items-center cursor-pointer">
-					<input id="liveToggle" type="checkbox" class="sr-only peer" checked />
-					<div
-						class="w-12 h-6 bg-slate-700 peer-checked:bg-green-600 rounded-full peer"
-					></div>
-					<div
-						class="absolute left-1 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-6"
-					></div>
-				</label>
-				<div class="text-sm text-slate-300/60">Auto-scroll:</div>
-				<label class="relative inline-flex items-center cursor-pointer">
-					<input
-						id="scrollToggle"
-						type="checkbox"
-						class="sr-only peer"
-						checked
-					/>
-					<div
-						class="w-12 h-6 bg-slate-700 peer-checked:bg-blue-600 rounded-full peer"
-					></div>
-					<div
-						class="absolute left-1 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-6"
-					></div>
-				</label>
+			<div class="flex flex-col py-2 gap-2 items-start">
+				<div class="flex flex-row items-center gap-3">
+					<div class="text-sm text-slate-300/60">Live:</div>
+					<label class="relative inline-flex items-center cursor-pointer">
+						<input
+							id="liveToggle"
+							type="checkbox"
+							class="sr-only peer"
+							checked
+						/>
+						<div
+							class="w-12 h-6 bg-slate-700 peer-checked:bg-green-600 rounded-full peer"
+						></div>
+						<div
+							class="absolute left-1 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-6"
+						></div>
+					</label>
+
+					<div class="text-sm text-slate-300/60">Auto-scroll:</div>
+					<label class="relative inline-flex items-center cursor-pointer">
+						<input
+							id="scrollToggle"
+							type="checkbox"
+							class="sr-only peer"
+							checked
+						/>
+						<div
+							class="w-12 h-6 bg-slate-700 peer-checked:bg-blue-600 rounded-full peer"
+						></div>
+						<div
+							class="absolute left-1 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-6"
+						></div>
+					</label>
+				</div>
+
+				<div>
+					<p id="serverTime" class="text-sm text-slate-300/60 text-white"></p>
+				</div>
 			</div>
 		</header>
 
 		<main class="max-w-7xl mx-auto p-6 space-y-6">
 			<!-- Controls -->
-			<section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+			<section class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
 				<div class="col-span-2 flex gap-3">
 					<select
 						id="tableSelect"
@@ -101,12 +106,12 @@
 					<input
 						id="limit"
 						type="number"
-						value="200"
+						value="100"
 						min="1"
 						max="1000"
 						class="w-24 px-3 py-2 rounded-md bg-slate-900 border border-white/5 text-sm"
 					/>
-								
+
 					<input
 						id="search"
 						class="flex-1 px-3 py-2 rounded-md bg-slate-900 border border-white/5 text-sm"
@@ -133,6 +138,7 @@
 					>
 						Refresh
 					</button>
+					<p class="show-time text-sm"></p>
 				</div>
 			</section>
 
@@ -163,15 +169,14 @@
 				<div class="flex items-center justify-between mb-3">
 					<h2 class="text-lg font-medium">Table Viewer</h2>
 					<div class="text-sm text-slate-300/70">
-						Table: <span id="currentTable">logs</span>
+						Table: <span id="currentTable"></span>
 					</div>
 				</div>
 
 				<div class="scroll-area rounded-md border border-white/4">
 					<table class="min-w-full divide-y divide-white/6">
 						<thead class="sticky-header">
-							<tr id="tableHeader">
-							</tr>
+							<tr id="tableHeader"></tr>
 						</thead>
 						<tbody id="tableBody" class="text-sm"></tbody>
 					</table>
@@ -192,8 +197,9 @@
 							Next
 						</button>
 					</div>
+					<div class="text-sm text-slate-300/60" id="countsBar"></div>
 					<div class="text-sm text-slate-300/60">
-						Page: <span id="page">1</span>
+						<span id="page">1</span>
 					</div>
 				</div>
 			</section>
@@ -204,341 +210,340 @@
 		</footer>
 
 		<script>
-      const ENDPOINT_DEFAULT =
-    "https://bccnyyrkvejbacvywqgk.supabase.co/functions/v1/getLogs";
+            // CONSTANTS
+			const ENDPOINT_DEFAULT =
+				"https://bccnyyrkvejbacvywqgk.supabase.co/functions/v1/getLogs";
 
-const tableSelect = document.getElementById("tableSelect");
-const limitInput = document.getElementById("limit");
-const searchInput = document.getElementById("search");
-const levelFilter = document.getElementById("levelFilter");
-const sourceFilter = document.getElementById("sourceFilter");
-const currentTableLabel = document.getElementById("currentTable");
-const statusEl = document.getElementById("status");
-const liveToggle = document.getElementById("liveToggle");
-const scrollToggle = document.getElementById("scrollToggle");
-const metricsSection = document.getElementById("metricsSection");
+            // DOM ELEMENTS
+			const tableSelect = document.getElementById("tableSelect");
+			const limitInput = document.getElementById("limit");
+			const searchInput = document.getElementById("search");
+			const levelFilter = document.getElementById("levelFilter");
+			const sourceFilter = document.getElementById("sourceFilter");
+			const currentTableLabel = document.getElementById("currentTable");
+			const statusEl = document.getElementById("status");
+			const liveToggle = document.getElementById("liveToggle");
+			const scrollToggle = document.getElementById("scrollToggle");
+			const metricsSection = document.getElementById("metricsSection");
 
+			const nextBtn = document.getElementById("nextBtn");
+			const prevBtn = document.getElementById("prevBtn");
+			const pageLabel = document.getElementById("page");
 
-let offset = 0;
-let page = 1;
-// const rowsPerPage = () => Math.min(1000, Number(limitInput.value) || 200);
-let autoTimer = null;
-let metricsChart = null;
-let lastMetrics = [];
+			const countsBar = document.getElementById("countsBar");
+			const serverTimeEl = document.getElementById("serverTime");
+            // state
+			let offset = 0;
+			let page = 1;
+			let autoTimer = null;
+			let metricsChart = null;
 
+			let lastPagination = null;
+			let lastCounts = null;
 
+			// server-time clock
+			let serverTimeBase = null;
+			let serverTimeStartMs = 0;
+			let clockTimer = null;
+            // helpers
+			function setStatus(s) {
+				statusEl.innerText = s;
+			}
 
-function setStatus(s) {
-    statusEl.innerText = s;
-}
+			function rowsPerPage() {
+				return Math.min(1000, Number(limitInput.value) || 200);
+			}
 
-function buildUrl() {
-    const base = (
-        ENDPOINT_DEFAULT
-    ).trim();
-    const table = tableSelect.value;
-    const params = new URLSearchParams();
-    params.set("table", table);
-    params.set("limit", rowsPerPage());
-    params.set("offset", offset);
-    if (levelFilter.value) params.set("level", levelFilter.value);
-    if (sourceFilter.value) params.set("source", sourceFilter.value.trim());
-    if (searchInput.value.trim())
-        params.set("search", searchInput.value.trim());
-    return base + "?" + params.toString();
-}
+			function buildUrl() {
+				const params = new URLSearchParams();
+				params.set("table", tableSelect.value);
+				params.set("limit", rowsPerPage());
+				params.set("offset", offset);
 
-async function fetchData() {
-    setStatus("Fetching...");
-    const url = buildUrl();
-    console.log("Fetching URL:", url);
-    try {
-        const res = await fetch(url);
-        if (!res.ok) {
-            setStatus("Error: " + res.status + " " + (await res.text()));
-            return null;
-        }
-        const data = await res.json();
-        setStatus(`Loaded ${Array.isArray(data) ? data.length : 0} rows`);
-        if (!data || !Array.isArray(data) || data.length === 0) {
-            setStatus("No data found");
-            return null;
-        }
-        console.log("Fetched data:", data);
-        return data;
-    } catch (err) {
-        setStatus("Fetch failed: " + err);
-        return null;
-    }
-}
-// fetchData();
+				if (levelFilter.value) params.set("level", levelFilter.value);
+				if (sourceFilter.value) params.set("source", sourceFilter.value.trim());
+				if (searchInput.value.trim())
+					params.set("search", searchInput.value.trim());
 
-function badgeForLevel(level) {
-    if (!level)
-        return '<span class="badge-level bg-slate-700 text-slate-200">N/A</span>';
-    switch (level.toUpperCase()) {
-        case "DEBUG":
-            return '<span class="badge-level bg-green-900 text-green-300">DEBUG</span>';
-        case "INFO":
-            return '<span class="badge-level bg-blue-900 text-blue-200">INFO</span>';
-        case "WARNING":
-            return '<span class="badge-level bg-yellow-800 text-yellow-200">WARN</span>';
-        case "ERROR":
-            return '<span class="badge-level bg-red-900 text-red-200">ERROR</span>';
-        default:
-            return `<span class="badge-level bg-slate-700 text-slate-200">${level}</span>`;
-    }
-}
+				return `${ENDPOINT_DEFAULT}?${params.toString()}`;
+			}
 
-function renderTable(data) {
-    const tableHeader = Object.keys(data[0] || {});
-    const theaderRow = document.getElementById("tableHeader");
-    theaderRow.innerHTML = tableHeader.map(r => `<th class="px-4 py-2 text-left text-xs uppercase tracking-wider">${r}</th>`).join("");
+			function escapeHtml(s) {
+				return String(s)
+					.replace(/&/g, "&amp;")
+					.replace(/</g, "&lt;")
+					.replace(/>/g, "&gt;")
+					.replace(/"/g, "&quot;");
+			}
+            // convert time utc to ist
+			function formatToIST(utcString) {
+				if (!utcString) return "";
+				const d = new Date(utcString);
+				if (isNaN(d.getTime())) return utcString;
 
-    const tbody = document.getElementById("tableBody");
-    tbody.innerHTML = "";
-    if (!Array.isArray(data) || data.length === 0) {
-        tbody.innerHTML =
-            '<tr><td class="px-4 py-3 text-slate-400" colspan="5">No rows</td></tr>';
-        return;
-    }
-    for (const row of data) {
-        const tr = document.createElement("tr");
-        tr.className = "border-b border-white/4";
-        tableHeader.forEach(headerKey => {
-            const td = document.createElement("td");
-            let cellContent = escapeHtml(String(row[headerKey] ?? ""));
-            let cellClass = "px-4 py-3 align-top text-sm text-slate-200";
+				return new Intl.DateTimeFormat("en-IN", {
+					timeZone: "Asia/Kolkata",
+					year: "numeric",
+					month: "2-digit",
+					day: "2-digit",
+					hour: "2-digit",
+					minute: "2-digit",
+					second: "2-digit",
+				}).format(d);
+			}
 
-            if (headerKey === "level") {
-                cellContent = badgeForLevel(row[headerKey]);
-                cellClass = "px-4 py-3 align-top";
+			function startLiveClock() {
+				if (clockTimer) clearInterval(clockTimer);
+
+				clockTimer = setInterval(() => {
+					if (!serverTimeBase) return;
+
+					const elapsed = performance.now() - serverTimeStartMs;
+					const currentUtc = new Date(serverTimeBase.getTime() + elapsed);
+
+					serverTimeEl.innerText =
+						"Time (IST): " + formatToIST(currentUtc.toISOString());
+				}, 1000);
+			}
+            // update pagination buttons
+			function updatePaginationButtons() {
+				if (!lastPagination) return;
+
+				prevBtn.disabled = offset <= 0;
+				nextBtn.disabled = !lastPagination.has_more;
+
+				prevBtn.classList.toggle("opacity-50", prevBtn.disabled);
+				nextBtn.classList.toggle("opacity-50", nextBtn.disabled);
+			}
+            // fetch data
+			async function fetchData() {
+				setStatus("Fetching...");
+				const url = buildUrl();
+
+				try {
+					const res = await fetch(url);
+					if (!res.ok) {
+						setStatus(`Error ${res.status}: ${await res.text()}`);
+						return null;
+					}
+
+					const json = await res.json();
+
+					const rows = Array.isArray(json.data) ? json.data : [];
+
+					lastPagination = json.pagination || {};
+					lastCounts = json.counts || {};
+
+					if (json.server_time_iso) {
+						serverTimeBase = new Date(json.server_time_iso);
+						serverTimeStartMs = performance.now();
+					}
+
+					updatePaginationButtons();
+
+					const pageCount = lastPagination.page_count ?? rows.length;
+					const totalCount = lastPagination.total_count ?? 0;
+					const totalPages = lastPagination.total_pages ?? 1;
+
+					pageLabel.innerText = `Showing ${pageCount} / ${totalCount} rows (Page ${page} of ${totalPages})`;
+
+					return rows;
+				} catch (err) {
+					setStatus("Fetch failed: " + err);
+					return null;
+				}
+			}
+            // render counts
+			function renderCounts() {
+				if (!lastCounts) return;
+
+				countsBar.innerText =
+					`Logs: ${lastCounts.logs || 0} | ` +
+					`Errors: ${lastCounts.log_errors || 0} | ` +
+					`Metrics: ${lastCounts.pipeline_metrics || 0}`;
             }
-            if (headerKey === "message" || headerKey === "short_message") {
-                cellContent = `<div class="log-message">${escapeHtml(String(row[headerKey]))}</div>`;
-                cellClass = "px-4 py-3 align-top text-slate-200";
-            }
-            td.className = cellClass;
-            td.innerHTML = cellContent;
-            tr.appendChild(td);
+            // badge for log level
+			function badgeForLevel(level) {
+				if (!level)
+					return '<span class="badge-level bg-slate-700 text-slate-200">N/A</span>';
 
-        });
-        tbody.appendChild(tr);
-    }
+				switch (level.toUpperCase()) {
+					case "DEBUG":
+						return '<span class="badge-level bg-green-900 text-green-300">DEBUG</span>';
+					case "INFO":
+						return '<span class="badge-level bg-blue-900 text-blue-200">INFO</span>';
+					case "WARNING":
+						return '<span class="badge-level bg-yellow-800 text-yellow-200">WARN</span>';
+					case "ERROR":
+						return '<span class="badge-level bg-red-900 text-red-200">ERROR</span>';
+					default:
+						return `<span class="badge-level bg-slate-700 text-slate-200">${level}</span>`;
+				}
+			}
+            // render table
+			function renderTable(data) {
+				const theaderRow = document.getElementById("tableHeader");
+				const tbody = document.getElementById("tableBody");
 
+				if (!Array.isArray(data) || data.length === 0) {
+					theaderRow.innerHTML = "";
+					tbody.innerHTML =
+						'<tr><td class="px-4 py-3 text-slate-400">No rows</td></tr>';
+					return;
+				}
 
+				const headers = Object.keys(data[0]);
+				theaderRow.innerHTML = headers
+					.map(
+						(h) =>
+							`<th class="px-4 py-2 text-left text-xs uppercase tracking-wider">${h}</th>`,
+					)
+					.join("");
 
-    currentTableLabel.innerText = tableSelect.value;
+				tbody.innerHTML = "";
 
-    // auto-scroll to bottom if live & enabled
-    const scrollArea = document.querySelector(".scroll-area");
-    if (liveToggle.checked && scrollToggle.checked && scrollArea) {
-        scrollArea.scrollBottom = scrollArea.scrollHeight;
-    }
-}
+				for (const row of data) {
+					const tr = document.createElement("tr");
+					tr.className = "border-b border-white/4";
 
-function escapeHtml(s) {
-    return String(s)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-}
+					headers.forEach((key) => {
+						const td = document.createElement("td");
+						let value = row[key] ?? "";
+						let content = escapeHtml(String(value));
+						let cls = "px-4 py-3 text-sm text-slate-200";
 
-// metrics chart
-function renderMetrics(data) {
-    setTimeout(() => {
-        if (!Array.isArray(data) || data.length === 0) {
-            // clear chart
-            if (metricsChart) {
-                metricsChart.data.labels = [];
-                metricsChart.data.datasets.forEach((ds) => (ds.data = []));
-                metricsChart.update();
-            }
-            return;
-        }
+						if (key === "level") {
+							content = badgeForLevel(value);
+							cls = "px-4 py-3";
+						}
 
-        // data is descending (id desc). reverse to show time forward
-        const rows = data.slice().reverse();
-        const labels = rows.map((r) => r.batch_no ?? r.id ?? "");
-        const updated = rows.map((r) => Number(r.rows_updated || 0));
-        const processed = rows.map((r) => Number(r.rows_processed || 0));
-        const duration = rows.map((r) => Number(r.duration_seconds || 0));
+						if (key === "message" || key === "short_message") {
+							content = `<div class="log-message">${escapeHtml(value)}</div>`;
+						}
 
-        const ctx = document.getElementById("metricsChart").getContext("2d");
+						if (key === "created_at") {
+							content = formatToIST(value);
+						}
 
-        if (!metricsChart) {
-            metricsChart = new Chart(ctx, {
-                type: "line",
-                data: {
-                    labels,
-                    datasets: [{
-                            label: "rows_updated",
-                            data: updated,
-                            borderColor: "#06b6d4",
-                            backgroundColor: "rgba(6,182,212,0.08)",
-                            tension: 0.2,
-                        },
-                        {
-                            label: "rows_processed",
-                            data: processed,
-                            borderColor: "#60a5fa",
-                            backgroundColor: "rgba(96,165,250,0.08)",
-                            tension: 0.2,
-                        },
-                        {
-                            label: "duration_seconds",
-                            data: duration,
-                            borderColor: "#f97316",
-                            backgroundColor: "rgba(249,115,22,0.06)",
-                            tension: 0.2,
-                            yAxisID: "y2",
-                        },
-                    ],
-                },
-                options: {
-                    interaction: {
-                        mode: "index",
-                        intersect: false
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        },
-                        y2: {
-                            position: "right",
-                            grid: {
-                                display: false
-                            },
-                            beginAtZero: true,
-                            ticks: {
-                                color: "#f97316"
-                            },
-                        },
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: "#cbd5e1"
-                            }
-                        }
-                    },
-                },
-            });
-        } else {
-            metricsChart.data.labels = labels;
-            metricsChart.data.datasets[0].data = updated;
-            metricsChart.data.datasets[1].data = processed;
-            metricsChart.data.datasets[2].data = duration;
-            metricsChart.update();
-        }
+						td.className = cls;
+						td.innerHTML = content;
+						tr.appendChild(td);
+					});
 
-        // small summary
-        const totalUpdated = updated.reduce((a, b) => a + b, 0);
-        const totalProcessed = processed.reduce((a, b) => a + b, 0);
-        document.getElementById(
-            "metricsSummary",
-        ).innerText = `Batches: ${labels.length} • Total processed: ${totalProcessed} • Total updated: ${totalUpdated}`;
-    }, 2000);
-}
+					tbody.appendChild(tr);
+				}
 
-// main refresh + live handling
-async function refreshOnce() {
-    const data = await fetchData();
-    console.log(data);
-    if (!data) return;
-    const table = tableSelect.value;
-    if (table === "pipeline_metrics") {
-        // metricsSection.style.display = "block";
-        renderMetrics(data);
-    }
-    renderTable(data);
-    lastMetrics = data;
-}
+				currentTableLabel.innerText = tableSelect.value;
 
-async function loopRefresh() {
-    // immediate first refresh
-    await refreshOnce();
-    console.log("Started auto-refresh loop");
-    if (autoTimer) clearInterval(autoTimer);
-    const ms = (liveToggle.checked ? 5 : 30) * 1000; // if live, 5s else 30s - default
-    autoTimer = setInterval(async () => {
-        if (!liveToggle.checked) return;
-        await refreshOnce();
-    }, ms);
-}
+				const scrollArea = document.querySelector(".scroll-area");
+				if (liveToggle.checked && scrollToggle.checked && scrollArea) {
+					scrollArea.scrollTop = scrollArea.scrollTop;
+				}
+			}
+            // render metrics chart
+			function renderMetrics(data) {
+				if (!Array.isArray(data) || data.length === 0) return;
 
-// event wiring
-document.getElementById("refreshBtn").addEventListener("click", () => {
-    offset = 0;
-    page = 1;
-    document.getElementById("page").innerText = 1;
-    refreshOnce();
-});
-document.getElementById("nextBtn").addEventListener("click", () => {
-    offset += rowsPerPage();
-    page += 1;
-    document.getElementById("page").innerText = page;
-    refreshOnce();
-});
-document.getElementById("prevBtn").addEventListener("click", () => {
-    if (offset >= rowsPerPage()) {
-        offset -= rowsPerPage();
-        page = Math.max(1, page - 1);
-        document.getElementById("page").innerText = page;
-        refreshOnce();
-    }
-});
+				const rows = data.slice().reverse();
+				const labels = rows.map((r) => r.batch_no ?? r.id ?? "");
+				const updated = rows.map((r) => Number(r.rows_updated || 0));
+				const processed = rows.map((r) => Number(r.rows_processed || 0));
+				const duration = rows.map((r) => Number(r.duration_seconds || 0));
 
-// search and filters
-let searchTimer = null;
-searchInput.addEventListener("input", () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-        offset = 0;
-        page = 1;
-        refreshOnce();
-    }, 400);
-});
-levelFilter.addEventListener("change", () => {
-    offset = 0;
-    page = 1;
-    refreshOnce();
-});
-sourceFilter.addEventListener("input", () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-        offset = 0;
-        page = 1;
-        refreshOnce();
-    }, 400);
-});
-tableSelect.addEventListener("change", () => {
-    offset = 0;
-    page = 1;
-    document.getElementById("page").innerText = 1;
-    if (!tableSelect.value === "pipeline_metrics" && (tableSelect.value === "logs" || tableSelect.value === "log_errors")) {
-        metricsSection.style.display = "none";
-    } else {
-        metricsSection.style.display = "block";
-    }
+				const ctx = document.getElementById("metricsChart").getContext("2d");
 
-    refreshOnce();
-});
+				if (!metricsChart) {
+					metricsChart = new Chart(ctx, {
+						type: "line",
+						data: {
+							labels,
+							datasets: [
+								{ label: "rows_updated", data: updated },
+								{ label: "rows_processed", data: processed },
+								{ label: "duration_seconds", data: duration, yAxisID: "y2" },
+							],
+						},
+						options: {
+							interaction: { mode: "index", intersect: false },
+							scales: { y: { beginAtZero: true }, y2: { position: "right" } },
+						},
+					});
+				} else {
+					metricsChart.data.labels = labels;
+					metricsChart.data.datasets[0].data = updated;
+					metricsChart.data.datasets[1].data = processed;
+					metricsChart.data.datasets[2].data = duration;
+					metricsChart.update();
+				}
+			}
+            // INITIALIZE & EVENT LISTENERS
+			async function refreshOnce() {
+				const rows = await fetchData();
+				if (!rows) return;
 
-// helper
-function rowsPerPage() {
-    return Math.min(1000, Number(limitInput.value) || 200);
-}
+				if (tableSelect.value === "pipeline_metrics") {
+					metricsSection.style.display = "block";
+					renderMetrics(rows);
+				} else {
+					metricsSection.style.display = "none";
+				}
 
-// initial run
-(async () => {
-    // set default endpoint if left
-    metricsSection.style.display = "none";
-    ENDPOINT_DEFAULT;
-    await refreshOnce();
-    loopRefresh();
-})();
-    </script>
+				renderTable(rows);
+				renderCounts();
+				startLiveClock();
+			}
+
+			async function loopRefresh() {
+				await refreshOnce();
+				const ms = (liveToggle.checked ? 10 : 30) * 1000;
+
+				autoTimer = setInterval(async () => {
+					if (!liveToggle.checked) return;
+					await refreshOnce();
+				}, ms);
+			}
+
+			document.getElementById("refreshBtn").onclick = () => {
+				offset = 0;
+				page = 1;
+				refreshOnce();
+			};
+
+			nextBtn.onclick = () => {
+				offset += rowsPerPage();
+				page++;
+				refreshOnce();
+			};
+
+			prevBtn.onclick = () => {
+				if (offset >= rowsPerPage()) {
+					offset -= rowsPerPage();
+					page = Math.max(1, page - 1);
+					refreshOnce();
+				}
+			};
+
+			searchInput.oninput = () => {
+				offset = 0;
+				page = 1;
+				refreshOnce();
+			};
+
+			levelFilter.onchange = sourceFilter.onchange = () => {
+				offset = 0;
+				page = 1;
+				refreshOnce();
+			};
+
+			tableSelect.onchange = () => {
+				offset = 0;
+				page = 1;
+				refreshOnce();
+			};
+
+			metricsSection.style.display = "none";
+			refreshOnce();
+			loopRefresh();
+		</script>
 	</body>
 </html>
